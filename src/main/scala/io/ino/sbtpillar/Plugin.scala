@@ -11,10 +11,11 @@ import scala.util.Try
 object Plugin extends sbt.Plugin {
 
   object PillarKeys {
-    val createKeyspace = taskKey[Unit]("Create keyspace.")
+    val createKeyspace = taskKey[Unit]("Create keyspace and migrations table.")
+    val createMigrationsTable = taskKey[Unit]("Create migrations table, does not create keyspace beforehand.")
     val dropKeyspace = taskKey[Unit]("Drop keyspace.")
-    val migrate = taskKey[Unit]("Run pillar migrations.")
-    val cleanMigrate = taskKey[Unit]("Recreate keyspace and run pillar migrations.")
+    val migrate = taskKey[Unit]("Run pillar migrations (requires the keyspace and migrations table to exist).")
+    val cleanMigrate = taskKey[Unit]("Recreate keyspace with migrations table and run pillar migrations.")
 
     val pillarConfigFile = settingKey[File]("Path to the configuration file holding the cassandra uri")
     val pillarConfigKey = settingKey[String]("Configuration key storing the cassandra url")
@@ -37,6 +38,15 @@ object Plugin extends sbt.Plugin {
         streams.value.log) { (url, replicationStrategy, replicationFactor, defaultConsistencyLevel) =>
         streams.value.log.info(s"Creating keyspace ${url.keyspace} at ${url.hosts(0)}:${url.port}")
         Pillar.initialize(replicationStrategy, replicationFactor, url, streams.value.log)
+      }
+    },
+    createMigrationsTable := {
+      withCassandraUrl(pillarConfigFile.value, pillarConfigKey.value,
+        pillarReplicationStrategyConfigKey.value, pillarReplicationFactorConfigKey.value,
+        pillarDefaultConsistencyLevelConfigKey.value,
+        streams.value.log) { (url, replicationStrategy, replicationFactor, defaultConsistencyLevel) =>
+        streams.value.log.info(s"Creating keyspace ${url.keyspace} at ${url.hosts(0)}:${url.port}")
+        Pillar.createMigrationsTable(replicationStrategy, replicationFactor, url, streams.value.log)
       }
     },
     dropKeyspace := {
@@ -174,6 +184,16 @@ object Plugin extends sbt.Plugin {
 
     def initialize(session: Session, replicationStrategy: String, replicationFactor: Int, url: CassandraUrl) {
       Migrator(Registry(Seq.empty)).initialize(session, url.keyspace, replicationOptionsWith(replicationStrategy, replicationFactor))
+    }
+
+    def createMigrationsTable(replicationStrategy: String, replicationFactor: Int, url: CassandraUrl, logger: Logger): Unit = {
+      withSession(url, None, logger) { (url, session) =>
+        createMigrationsTable(session, url)
+      }
+    }
+
+    def createMigrationsTable(session: Session, url: CassandraUrl) {
+      Migrator(Registry(Seq.empty)).createMigrationsTable(session, url.keyspace)
     }
 
     def destroy(url: CassandraUrl, logger: Logger): Unit = {

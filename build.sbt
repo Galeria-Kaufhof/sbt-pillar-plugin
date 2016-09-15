@@ -2,21 +2,21 @@ sbtPlugin := true
 
 name := "sbt-pillar-plugin"
 
-description := "sbt plugin for cassandra schema/data migrations using pillar (https://github.com/comeara/pillar)"
+description := "sbt plugin for cassandra schema/data migrations using the GALERIA Kaufhof pillar fork (https://github.com/Galeria-Kaufhof/pillar)"
 
 organization := "io.ino"
 
-version := "2.1.1"
+version := "2.2.0"
 
 licenses := Seq("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0.html"))
 
-scalaVersion := "2.10.4"
+scalaVersion := "2.10.6"
 
 scalacOptions += "-target:jvm-1.7"
 
 libraryDependencies ++= Seq(
-  "de.kaufhof" %% "pillar" % "3.0.0",
-  "com.datastax.cassandra" % "cassandra-driver-core" % "3.0.0"
+  "de.kaufhof" % "pillar_2.11" % "3.3.0",
+  "com.datastax.cassandra" % "cassandra-driver-core" % "3.1.0"
 )
 
 // Maven publishing info
